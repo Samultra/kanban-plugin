@@ -1,6 +1,8 @@
 {
   "rules": {
     "users": {
+      ".read": true,
+      ".write": true,
       "$uid": {
         "tasks": {
           ".read": true,
@@ -23,8 +25,17 @@
               ".validate": "newData.isString()"
             }
           }
-        }
+        },
+    
+        ".read": true,
+        ".write": true,
+        "name": { ".validate": "newData.isString() && newData.val().length > 0" },
+        "avatar": { ".validate": "newData.isString() && newData.val().length > 0" }
       }
+    },
+    "test_connection": {
+      ".read": true,
+      ".write": true
     }
   }
 }

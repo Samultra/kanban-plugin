@@ -5,9 +5,9 @@ let allTasks = [];
 let currentTaskId = null; // ID текущей задачи для редактирования
 let isEditing = false; // Флаг редактирования
 
-// Пользователи
-const users = {
-    maxim: { name: 'Максим', avatar: '👨‍💼' },
+// Пользователи (теперь динамические)
+let users = {
+    maxim: { name: 'Максим', avatar: '👨‍🎨' },
     mark: { name: 'Марк', avatar: '👨‍💻' }
 };
 
@@ -68,17 +68,34 @@ document.addEventListener('DOMContentLoaded', function() {
     renderAllTasks();
     setupEventListeners();
     setupFirebaseListeners();
+    loadUsers(); // Загрузка пользователей при загрузке страницы
+    loadCustomColumns(); // Загрузка кастомных столбцов
 });
 
 // Настройка обработчиков событий
 function setupEventListeners() {
     document.getElementById('taskForm').addEventListener('submit', handleTaskSubmit);
+    document.getElementById('addUserForm').addEventListener('submit', handleAddUserSubmit);
+    document.getElementById('addColumnForm').addEventListener('submit', handleAddColumnSubmit);
     
-    // Закрытие модального окна
+    // Закрытие модальных окон
     window.addEventListener('click', function(event) {
-        const modal = document.getElementById('taskModal');
-        if (event.target === modal) {
+        const taskModal = document.getElementById('taskModal');
+        const viewTaskModal = document.getElementById('viewTaskModal');
+        const addUserModal = document.getElementById('addUserModal');
+        const addColumnModal = document.getElementById('addColumnModal');
+        
+        if (event.target === taskModal) {
             closeModal();
+        }
+        if (event.target === viewTaskModal) {
+            closeViewModal();
+        }
+        if (event.target === addUserModal) {
+            closeAddUserModal();
+        }
+        if (event.target === addColumnModal) {
+            closeAddColumnModal();
         }
     });
 }
@@ -343,12 +360,10 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-// Проверка возможности перемещения (только слева направо)
+// Проверка возможности перемещения (теперь можно во всех направлениях)
 function canMoveTask(currentStatus, newStatus) {
-    const statusOrder = ['todo', 'in-progress', 'review', 'done'];
-    const currentIndex = statusOrder.indexOf(currentStatus);
-    const newIndex = statusOrder.indexOf(newStatus);
-    return newIndex === currentIndex + 1;
+    // Разрешаем перемещение во всех направлениях
+    return true;
 }
 
 // Drag and Drop
@@ -409,7 +424,7 @@ function drop(e) {
         const task = allTasks.find(t => t.id === taskId);
         if (task && task.status !== newStatus) {
             if (!canMoveTask(task.status, newStatus)) {
-                showNotification('Можно перемещать задачи только на следующий этап справа', 'error');
+                showNotification('Невозможно переместить задачу', 'error');
                 return;
             }
             
@@ -427,7 +442,7 @@ function drop(e) {
         const task = tasks.find(t => t.id === taskId);
         if (task && task.status !== newStatus) {
             if (!canMoveTask(task.status, newStatus)) {
-                showNotification('Можно перемещать задачи только на следующий этап справа', 'error');
+                showNotification('Невозможно переместить задачу', 'error');
                 return;
             }
             
@@ -596,6 +611,85 @@ function closeViewModal() {
     currentTaskId = null;
 }
 
+// Функции для работы с пользователями
+function openAddUserModal() {
+    const modal = document.getElementById('addUserModal');
+    const form = document.getElementById('addUserForm');
+    
+    form.reset();
+    modal.style.display = 'block';
+    document.getElementById('newUserName').focus();
+}
+
+function closeAddUserModal() {
+    document.getElementById('addUserModal').style.display = 'none';
+}
+
+function handleAddUserSubmit(e) {
+    e.preventDefault();
+    
+    const userName = document.getElementById('newUserName').value.trim();
+    const userAvatar = document.getElementById('newUserAvatar').value;
+    
+    if (!userName) {
+        showNotification('Введите имя пользователя', 'error');
+        return;
+    }
+    
+    // Генерируем уникальный ID для пользователя
+    const userId = generateUserId(userName);
+    
+    // Проверяем, что пользователь с таким именем не существует
+    const existingUser = Object.values(users).find(user => 
+        user.name.toLowerCase() === userName.toLowerCase()
+    );
+    
+    if (existingUser) {
+        showNotification('Пользователь с таким именем уже существует', 'error');
+        return;
+    }
+    
+    // Добавляем нового пользователя
+    users[userId] = {
+        name: userName,
+        avatar: userAvatar
+    };
+    
+    // Сохраняем в Firebase
+    saveUsers();
+    
+    // Обновляем селектор
+    updateUserSelect();
+    
+    // Переключаемся на нового пользователя
+    currentUser = userId;
+    document.getElementById('userSelect').value = userId;
+    
+    closeAddUserModal();
+    showNotification(`Пользователь ${userName} добавлен`, 'success');
+    
+    // Перезагружаем задачи для нового пользователя
+    loadTasks();
+    renderTasks();
+}
+
+// Генерация ID пользователя
+function generateUserId(name) {
+    const baseId = name.toLowerCase()
+        .replace(/[^a-zа-яё0-9]/g, '')
+        .substring(0, 10);
+    
+    let userId = baseId;
+    let counter = 1;
+    
+    while (users[userId]) {
+        userId = `${baseId}${counter}`;
+        counter++;
+    }
+    
+    return userId;
+}
+
 function editCurrentTask() {
     closeViewModal();
     if (currentTaskId) {
@@ -678,12 +772,401 @@ function showNotification(message, type = 'info') {
 window.switchUser = switchUser;
 window.switchTab = switchTab;
 window.openAddTaskModal = openAddTaskModal;
+window.openAddUserModal = openAddUserModal;
+window.openAddColumnModal = openAddColumnModal;
 window.closeModal = closeModal;
 window.closeViewModal = closeViewModal;
+window.closeAddUserModal = closeAddUserModal;
+window.closeAddColumnModal = closeAddColumnModal;
 window.editCurrentTask = editCurrentTask;
 window.deleteCurrentTask = deleteCurrentTask;
+window.deleteCurrentUser = deleteCurrentUser;
 window.editTask = editTask;
 window.deleteTask = deleteTask;
+window.deleteColumn = deleteColumn;
 window.viewTask = viewTask;
 window.allowDrop = allowDrop;
 window.drop = drop; 
+
+// Загрузка пользователей из Firebase
+function loadUsers() {
+    // Временно используем только локальных пользователей
+    console.log('Загружаем локальных пользователей...');
+    updateUserSelect();
+    
+    // Попробуем загрузить из Firebase, но не будем блокировать приложение при ошибке
+    database.ref('users').once('value')
+        .then((snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                // Обновляем объект users, сохраняя существующих пользователей
+                Object.keys(data).forEach(userId => {
+                    if (data[userId].name && data[userId].avatar) {
+                        users[userId] = {
+                            name: data[userId].name,
+                            avatar: data[userId].avatar
+                        };
+                    }
+                });
+                updateUserSelect();
+                console.log('Пользователи загружены из Firebase');
+            }
+        })
+        .catch((error) => {
+            console.warn('Не удалось загрузить пользователей из Firebase, используем локальных:', error.message);
+            // Приложение продолжает работать с локальными пользователями
+        });
+}
+
+// Сохранение пользователей в Firebase
+function saveUsers() {
+    const usersData = {};
+    Object.keys(users).forEach(userId => {
+        usersData[userId] = {
+            name: users[userId].name,
+            avatar: users[userId].avatar
+        };
+    });
+    
+    database.ref('users').set(usersData);
+}
+
+// Обновление селектора пользователей
+function updateUserSelect() {
+    const userSelect = document.getElementById('userSelect');
+    const currentValue = userSelect.value;
+    
+    userSelect.innerHTML = '';
+    Object.keys(users).forEach(userId => {
+        const option = document.createElement('option');
+        option.value = userId;
+        option.textContent = `${users[userId].avatar} ${users[userId].name}`;
+        userSelect.appendChild(option);
+    });
+    
+    // Восстанавливаем выбранного пользователя
+    if (currentValue && users[currentValue]) {
+        userSelect.value = currentValue;
+    } else if (Object.keys(users).length > 0) {
+        userSelect.value = Object.keys(users)[0];
+        currentUser = Object.keys(users)[0];
+    }
+}
+
+// Удаление текущего пользователя
+function deleteCurrentUser() {
+    const userId = currentUser;
+    deleteUser(userId);
+}
+
+// Удаление пользователя
+function deleteUser(userId) {
+    const user = users[userId];
+    if (!user) return;
+    
+    // Проверяем, есть ли задачи у этого пользователя
+    const hasTasks = tasks.some(task => task.userId === userId) || 
+                    allTasks.some(task => task.userId === userId);
+    
+    if (hasTasks) {
+        if (!confirm(`У пользователя "${user.name}" есть задачи. Удалить пользователя и все его задачи?`)) {
+            return;
+        }
+        
+        // Удаляем все задачи пользователя
+        tasks = tasks.filter(task => task.userId !== userId);
+        allTasks = allTasks.filter(task => task.userId !== userId);
+        saveTasks();
+    } else {
+        if (!confirm(`Удалить пользователя "${user.name}"?`)) {
+            return;
+        }
+    }
+    
+    // Удаляем пользователя из объекта
+    delete users[userId];
+    
+    // Если удаляемый пользователь был текущим, переключаемся на первого доступного
+    if (currentUser === userId) {
+        const availableUsers = Object.keys(users);
+        if (availableUsers.length > 0) {
+            currentUser = availableUsers[0];
+        } else {
+            // Если нет пользователей, создаем дефолтного
+            users.default = { name: 'Пользователь', avatar: '👤' };
+            currentUser = 'default';
+        }
+    }
+    
+    // Сохраняем в Firebase
+    saveUsers();
+    
+    // Обновляем селектор
+    updateUserSelect();
+    
+    // Перезагружаем задачи
+    loadTasks();
+    loadAllTasks();
+    renderTasks();
+    renderAllTasks();
+    
+    showNotification(`Пользователь "${user.name}" удален`, 'success');
+}
+
+// Функции для работы с новыми столбцами
+let customColumns = [];
+
+// Стандартные столбцы
+const standardColumns = [
+    { status: 'todo', name: 'К выполнению', icon: 'fas fa-list' },
+    { status: 'in-progress', name: 'В работе', icon: 'fas fa-spinner' },
+    { status: 'review', name: 'На проверке', icon: 'fas fa-eye' },
+    { status: 'done', name: 'Завершено', icon: 'fas fa-check-circle' }
+];
+
+function openAddColumnModal() {
+    const modal = document.getElementById('addColumnModal');
+    const form = document.getElementById('addColumnForm');
+    
+    form.reset();
+    modal.style.display = 'block';
+    document.getElementById('newColumnName').focus();
+    
+    // Добавляем обработчик для автоматической генерации статуса
+    document.getElementById('newColumnName').addEventListener('input', generateColumnStatus);
+}
+
+function closeAddColumnModal() {
+    document.getElementById('addColumnModal').style.display = 'none';
+    
+    // Удаляем обработчик при закрытии
+    document.getElementById('newColumnName').removeEventListener('input', generateColumnStatus);
+}
+
+function generateColumnStatus() {
+    const columnName = document.getElementById('newColumnName').value.trim();
+    const statusField = document.getElementById('newColumnStatus');
+    
+    if (columnName) {
+        // Генерируем статус из названия: убираем пробелы, приводим к нижнему регистру
+        const status = columnName
+            .toLowerCase()
+            .replace(/[^а-яa-z0-9\s]/g, '') // Убираем спецсимволы
+            .replace(/\s+/g, '-') // Заменяем пробелы на дефисы
+            .replace(/-+/g, '-') // Убираем множественные дефисы
+            .replace(/^-|-$/g, ''); // Убираем дефисы в начале и конце
+        
+        statusField.value = status;
+    } else {
+        statusField.value = '';
+    }
+}
+
+function handleAddColumnSubmit(e) {
+    e.preventDefault();
+    
+    const columnName = document.getElementById('newColumnName').value.trim();
+    const columnStatus = document.getElementById('newColumnStatus').value.trim();
+    const columnIcon = document.getElementById('newColumnIcon').value;
+    
+    if (!columnName) {
+        showNotification('Введите название столбца', 'error');
+        return;
+    }
+    
+    if (!columnStatus) {
+        showNotification('Статус не был сгенерирован', 'error');
+        return;
+    }
+    
+    // Проверяем, что статус уникален среди всех столбцов
+    const allColumns = [...standardColumns, ...customColumns];
+    const existingColumn = allColumns.find(col => col.status === columnStatus);
+    if (existingColumn) {
+        showNotification('Столбец с таким статусом уже существует', 'error');
+        return;
+    }
+    
+    // Добавляем новый столбец в начало массива (слева)
+    const newColumn = {
+        name: columnName,
+        status: columnStatus,
+        icon: columnIcon
+    };
+    
+    customColumns.unshift(newColumn); // Добавляем в начало массива
+    
+    // Сохраняем в localStorage
+    localStorage.setItem('customColumns', JSON.stringify(customColumns));
+    
+    // Обновляем отображение
+    renderAllColumns();
+    
+    closeAddColumnModal();
+    showNotification(`Столбец "${columnName}" добавлен`, 'success');
+}
+
+function renderAllColumns() {
+    // Добавляем столбцы в обе вкладки
+    const personalTab = document.querySelector('#personal-tab .kanban-board');
+    const allTab = document.querySelector('#all-tab .kanban-board');
+    
+    // Очищаем все столбцы, кроме кнопки добавления
+    const addColumnBtn = personalTab.querySelector('.add-column-btn');
+    personalTab.innerHTML = '';
+    personalTab.appendChild(addColumnBtn);
+    
+    const addColumnBtnAll = allTab.querySelector('.add-column-btn');
+    allTab.innerHTML = '';
+    allTab.appendChild(addColumnBtnAll);
+    
+    // Создаем массив всех столбцов в правильном порядке
+    const allColumns = [...customColumns, ...standardColumns];
+    
+    // Добавляем все столбцы
+    allColumns.forEach((column, index) => {
+        const isCustom = customColumns.some(col => col.status === column.status);
+        const columnHTML = `
+            <div class="column" data-status="${column.status}" ${isCustom ? 'data-custom="true"' : ''} draggable="true" data-column-index="${index}">
+                <div class="column-header">
+                    <h3><i class="${column.icon}"></i> ${column.name}</h3>
+                    <div class="column-actions">
+                        <span class="task-count">0</span>
+                        ${isCustom ? `<button class="delete-column-btn" onclick="deleteColumn('${column.status}')" title="Удалить столбец">
+                            <i class="fas fa-trash"></i>
+                        </button>` : ''}
+                    </div>
+                </div>
+                <div class="task-list" ondrop="drop(event)" ondragover="allowDrop(event)">
+                    <!-- Задачи будут добавляться здесь -->
+                </div>
+                <button class="add-task-btn" onclick="openAddTaskModal('${column.status}')">
+                    <i class="fas fa-plus"></i> Добавить задачу
+                </button>
+            </div>
+        `;
+        
+        // Добавляем в обе вкладки
+        personalTab.insertAdjacentHTML('beforeend', columnHTML);
+        allTab.insertAdjacentHTML('beforeend', columnHTML);
+    });
+    
+    // Добавляем обработчики для перетаскивания столбцов
+    setupColumnDragAndDrop();
+    
+    // Обновляем отображение задач
+    renderTasks();
+    renderAllTasks();
+}
+
+function renderCustomColumns() {
+    renderAllColumns();
+}
+
+function loadCustomColumns() {
+    const savedColumns = localStorage.getItem('customColumns');
+    if (savedColumns) {
+        customColumns = JSON.parse(savedColumns);
+    }
+    renderAllColumns();
+}
+
+// Функции для работы со столбцами
+function deleteColumn(columnStatus) {
+    const column = customColumns.find(col => col.status === columnStatus);
+    if (!column) return;
+    
+    // Проверяем, есть ли задачи в этом столбце
+    const hasTasks = tasks.some(task => task.status === columnStatus) || 
+                    allTasks.some(task => task.status === columnStatus);
+    
+    if (hasTasks) {
+        if (!confirm(`В столбце "${column.name}" есть задачи. Удалить столбец и все задачи в нем?`)) {
+            return;
+        }
+        
+        // Удаляем все задачи из этого столбца
+        tasks = tasks.filter(task => task.status !== columnStatus);
+        allTasks = allTasks.filter(task => task.status !== columnStatus);
+        saveTasks();
+    } else {
+        if (!confirm(`Удалить столбец "${column.name}"?`)) {
+            return;
+        }
+    }
+    
+    // Удаляем столбец из массива
+    customColumns = customColumns.filter(col => col.status !== columnStatus);
+    
+    // Сохраняем в localStorage
+    localStorage.setItem('customColumns', JSON.stringify(customColumns));
+    
+    // Обновляем отображение
+    renderAllColumns();
+    showNotification(`Столбец "${column.name}" удален`, 'success');
+}
+
+function setupColumnDragAndDrop() {
+    const columns = document.querySelectorAll('.column[draggable="true"]');
+    
+    columns.forEach(column => {
+        column.addEventListener('dragstart', handleColumnDragStart);
+        column.addEventListener('dragend', handleColumnDragEnd);
+        column.addEventListener('dragover', handleColumnDragOver);
+        column.addEventListener('drop', handleColumnDrop);
+    });
+}
+
+function handleColumnDragStart(e) {
+    e.target.classList.add('column-dragging');
+    e.dataTransfer.setData('text/plain', e.target.getAttribute('data-column-index'));
+    e.dataTransfer.effectAllowed = 'move';
+}
+
+function handleColumnDragEnd(e) {
+    e.target.classList.remove('column-dragging');
+}
+
+function handleColumnDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+}
+
+function handleColumnDrop(e) {
+    e.preventDefault();
+    
+    const draggedIndex = parseInt(e.dataTransfer.getData('text/plain'));
+    const targetColumn = e.currentTarget;
+    const targetIndex = parseInt(targetColumn.getAttribute('data-column-index'));
+    
+    if (draggedIndex === targetIndex) return;
+    
+    // Определяем, какой столбец перемещается
+    const allColumns = [...customColumns, ...standardColumns];
+    const draggedColumn = allColumns[draggedIndex];
+    
+    if (!draggedColumn) return;
+    
+    // Если перемещается кастомный столбец
+    const isCustomColumn = customColumns.some(col => col.status === draggedColumn.status);
+    
+    if (isCustomColumn) {
+        // Находим индекс в массиве кастомных столбцов
+        const customIndex = customColumns.findIndex(col => col.status === draggedColumn.status);
+        const draggedCustomColumn = customColumns[customIndex];
+        
+        // Удаляем из текущей позиции
+        customColumns.splice(customIndex, 1);
+        
+        // Вычисляем новую позицию в массиве кастомных столбцов
+        const newCustomIndex = Math.max(0, Math.min(targetIndex, customColumns.length));
+        customColumns.splice(newCustomIndex, 0, draggedCustomColumn);
+        
+        // Сохраняем в localStorage
+        localStorage.setItem('customColumns', JSON.stringify(customColumns));
+    }
+    
+    // Обновляем отображение
+    renderAllColumns();
+    showNotification('Порядок столбцов изменен', 'success');
+} 
