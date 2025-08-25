@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kanban Доска</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="firebase-config.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1><i class="fas fa-rocket"></i> Kanban Доска</h1>
+            <div class="user-selector">
+                <label>Пользователь:</label>
+                <select id="userSelect" onchange="switchUser()">
+                    <option value="maxim">👨‍💼 Максим</option>
+                    <option value="mark">👨‍💻 Марк</option>
+                </select>
+            </div>
+        </header>
+
+        <!-- Вкладки -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('personal')" data-tab="personal">
+                <i class="fas fa-user"></i> Мои задачи
+            </button>
+            <button class="tab-btn" onclick="switchTab('all')" data-tab="all">
+                <i class="fas fa-users"></i> Все задачи
+            </button>
+        </div>
+
+        <!-- Вкладка: Мои задачи -->
+        <div class="tab-content active" id="personal-tab">
+            <div class="kanban-board">
+                <div class="column" data-status="todo">
+                    <div class="column-header">
+                        <h3><i class="fas fa-list"></i> К выполнению</h3>
+                        <span class="task-count">0</span>
+                    </div>
+                    <div class="task-list" ondrop="drop(event)" ondragover="allowDrop(event)">
+                        <!-- Задачи будут добавляться здесь -->
+                    </div>
+                    <button class="add-task-btn" onclick="openAddTaskModal('todo')">
+                        <i class="fas fa-plus"></i> Добавить задачу
+                    </button>
+                </div>
+
+                <div class="column" data-status="in-progress">
+                    <div class="column-header">
+                        <h3><i class="fas fa-spinner"></i> В работе</h3>
+                        <span class="task-count">0</span>
+                    </div>
+                    <div class="task-list" ondrop="drop(event)" ondragover="allowDrop(event)">
+                        <!-- Задачи будут добавляться здесь -->
+                    </div>
+                    <button class="add-task-btn" onclick="openAddTaskModal('in-progress')">
+                        <i class="fas fa-plus"></i> Добавить задачу
+                    </button>
+                </div>
+
+                <div class="column" data-status="review">
+                    <div class="column-header">
+                        <h3><i class="fas fa-eye"></i> На проверке</h3>
+                        <span class="task-count">0</span>
+                    </div>
+                    <div class="task-list" ondrop="drop(event)" ondragover="allowDrop(event)">
+                        <!-- Задачи будут добавляться здесь -->
+                    </div>
+                    <button class="add-task-btn" onclick="openAddTaskModal('review')">
+                        <i class="fas fa-plus"></i> Добавить задачу
+                    </button>
+                </div>
+
+                <div class="column" data-status="done">
+                    <div class="column-header">
+                        <h3><i class="fas fa-check-circle"></i> Завершено</h3>
+                        <span class="task-count">0</span>
+                    </div>
+                    <div class="task-list" ondrop="drop(event)" ondragover="allowDrop(event)">
+                        <!-- Задачи будут добавляться здесь -->
+                    </div>
+                    <button class="add-task-btn" onclick="openAddTaskModal('done')">
+                        <i class="fas fa-plus"></i> Добавить задачу
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Вкладка: Все задачи -->
+        <div class="tab-content" id="all-tab">
+            <div class="kanban-board">
+                <div class="column" data-status="todo">
+                    <div class="column-header">
+                        <h3><i class="fas fa-list"></i> К выполнению</h3>
+                        <span class="task-count">0</span>
+                    </div>
+                    <div class="task-list" ondrop="drop(event)" ondragover="allowDrop(event)">
+                        <!-- Задачи всех пользователей -->
+                    </div>
+                    <button class="add-task-btn" onclick="openAddTaskModal('todo')">
+                        <i class="fas fa-plus"></i> Добавить задачу
+                    </button>
+                </div>
+
+                <div class="column" data-status="in-progress">
+                    <div class="column-header">
+                        <h3><i class="fas fa-spinner"></i> В работе</h3>
+                        <span class="task-count">0</span>
+                    </div>
+                    <div class="task-list" ondrop="drop(event)" ondragover="allowDrop(event)">
+                        <!-- Задачи всех пользователей -->
+                    </div>
+                    <button class="add-task-btn" onclick="openAddTaskModal('in-progress')">
+                        <i class="fas fa-plus"></i> Добавить задачу
+                    </button>
+                </div>
+
+                <div class="column" data-status="review">
+                    <div class="column-header">
+                        <h3><i class="fas fa-eye"></i> На проверке</h3>
+                        <span class="task-count">0</span>
+                    </div>
+                    <div class="task-list" ondrop="drop(event)" ondragover="allowDrop(event)">
+                        <!-- Задачи всех пользователей -->
+                    </div>
+                    <button class="add-task-btn" onclick="openAddTaskModal('review')">
+                        <i class="fas fa-plus"></i> Добавить задачу
+                    </button>
+                </div>
+
+                <div class="column" data-status="done">
+                    <div class="column-header">
+                        <h3><i class="fas fa-check-circle"></i> Завершено</h3>
+                        <span class="task-count">0</span>
+                    </div>
+                    <div class="task-list" ondrop="drop(event)" ondragover="allowDrop(event)">
+                        <!-- Задачи всех пользователей -->
+                    </div>
+                    <button class="add-task-btn" onclick="openAddTaskModal('done')">
+                        <i class="fas fa-plus"></i> Добавить задачу
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно для добавления задачи -->
+    <div id="taskModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Добавить задачу</h2>
+                <span class="close" onclick="closeModal()">&times;</span>
+            </div>
+            <form id="taskForm">
+                <div class="form-group">
+                    <label for="taskTitle">Название задачи</label>
+                    <input type="text" id="taskTitle" required>
+                </div>
+                <div class="form-group">
+                    <label for="taskDescription">Описание</label>
+                    <textarea id="taskDescription" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="taskPriority">Приоритет</label>
+                    <select id="taskPriority">
+                        <option value="low">Низкий</option>
+                        <option value="medium" selected>Средний</option>
+                        <option value="high">Высокий</option>
+                        <option value="urgent">Срочный</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="taskStatus">Статус</label>
+                    <select id="taskStatus">
+                        <option value="todo">К выполнению</option>
+                        <option value="in-progress">В работе</option>
+                        <option value="review">На проверке</option>
+                        <option value="done">Завершено</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="button" onclick="closeModal()">Отмена</button>
+                    <button type="submit">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Модальное окно для просмотра задачи -->
+    <div id="viewTaskModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Просмотр задачи</h2>
+                <span class="close" onclick="closeViewModal()">&times;</span>
+            </div>
+            <div id="taskDetails">
+                <!-- Детали задачи будут отображаться здесь -->
+            </div>
+            <div class="form-actions">
+                <button type="button" onclick="closeViewModal()">Закрыть</button>
+                <button type="button" onclick="editCurrentTask()">Редактировать</button>
+                <button type="button" onclick="deleteCurrentTask()" class="btn-danger">Удалить</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html> 

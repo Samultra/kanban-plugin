@@ -1,0 +1,12 @@
+{
+  "rules": {
+    "users": {
+      "$uid": {
+        "tasks": {
+          ".read": true,
+          ".write": true
+        }
+      }
+    }
+  }
+}

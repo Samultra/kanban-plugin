@@ -1,0 +1,30 @@
+{
+  "rules": {
+    "users": {
+      "$uid": {
+        "tasks": {
+          ".read": true,
+          ".write": true,
+          "$taskId": {
+            ".validate": "newData.hasChildren(['id', 'title', 'status', 'priority', 'createdAt'])",
+            "id": {
+              ".validate": "newData.isString() && newData.val() == $taskId"
+            },
+            "title": {
+              ".validate": "newData.isString() && newData.val().length > 0"
+            },
+            "status": {
+              ".validate": "newData.isString() && newData.val().matches(/^(todo|in-progress|review|done)$/)"
+            },
+            "priority": {
+              ".validate": "newData.isString() && newData.val().matches(/^(low|medium|high|urgent)$/)"
+            },
+            "createdAt": {
+              ".validate": "newData.isString()"
+            }
+          }
+        }
+      }
+    }
+  }
+}
